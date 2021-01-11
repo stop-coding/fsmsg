@@ -1,0 +1,123 @@
+/*
+ * Copyright(C) 2020 Ruijie Network. All rights reserved.
+ */
+
+/*!
+* \file mds_mds.proto
+* \brief MDS与MDS之间消息定义
+* 
+* 	该文件是protoc工具生成对应代码所用的格式文档，非直接代码文件
+*
+* \copyright 2020 Ruijie Network. All rights reserved.
+* \author renlanhui@ruijie.com.cn
+* \version v1.0.0
+* \date 2020.09.14
+* \note none 
+*/
+syntax = "proto3";							 //必须使用proto3版本
+
+import "common.proto";
+/******************************************************************************
+* @message命名规则：文件名_消息名称，如文件名为msg_pb.proto， 消息为header, 则命名为msg_pb_header
+* @消息ID设置： 每个message 对应的序号是按顺序，从1开始递增。
+*			   如需特殊设置，则需要通过在message 同行 增加 “//##序号方式” 注释，不能有空格
+*              如：
+*				message msg_pb_header		//##12
+*				{
+*					define;       		
+*				}
+* 			   则，该消息的id则自动会被设置为12，即生成枚举值 MSG_ID_MSG_PB_HEADER = 12, 
+*			   后面的则会自动从12开始递增，如13,14。
+* @结构体 消息名 大驼峰写法：
+* 				message ca_mds_mount 对应生成C结构体为 CaMdsMount
+* @枚举值 枚举类型__枚举定义, 字母全部大写
+*		        enum data_type{
+*					DATA_E_NONE = 0,
+*				}
+				则，对应DATA_E_NONE的枚举值为“DATA_TYPE__DATA_E_NONE”		
+******************************************************************************/
+
+/**
+ * @brief 请求消息的公共头
+ *
+ * @details
+ */
+message  mds_mds_req_head      
+{
+	uint64 uid 				= 1;       	// 用户id
+	uint64 gid 				= 2;       	// 用户组id
+	uint64 client_id		= 3;		// 客户端的唯一识别码，与物理地址相关
+	uint32 num_retry		= 4;		// 表示当前请求client重试次数,一般默认为0
+	uint32 flag				= 5;	    // 标识字段，预留
+	uint64 ino				= 6;		// inode id，可选，可为0.如果是已经缓存了inode id，则可以携带，方便后端快速查找	
+	string root_path		= 7;		// root_path + file_path = MDS绝对路径
+    string file_path		= 8;		// 文件路径(目录或者文件)，必填，用于文件操作入参
+    uint32 vmds_id          = 9;        // 目标vMDS ID
+    uint64 subtree_id       = 10;       // 目标subtree ID
+}
+
+// inode
+message  mds_mds_req_lookup      
+{
+	mds_mds_req_head head	= 1;       	// req消息的公共头
+}
+
+message  mds_mds_req_lookupino      
+{
+	mds_mds_req_head head	= 1;       	// req消息的公共头
+}
+
+// Directory
+message mds_mds_req_mkdir
+{
+	mds_mds_req_head head	= 1;       	// req消息的公共头 
+	uint32 mode 			= 2;   		// 文件权限和类型
+	uint32 policy 			= 3;   		// 目录分片类型
+}
+
+message mds_mds_req_rmdir
+{
+	mds_mds_req_head head	= 1;       	// req消息的公共头       		
+}
+
+// File
+message mds_mds_req_create
+{
+	mds_mds_req_head head	= 1;       	// req消息的公共头
+	uint32	mode			= 2;
+	uint32 flags			= 3;
+	uint64 old_size			= 4;		
+}
+
+message mds_mds_req_rename
+{
+	mds_mds_req_head head	= 1;       	// req消息的公共头 
+	string new_file_path	= 2;		// 新文件路径(目录或者文件)   		
+}
+
+// link
+message mds_mds_req_link
+{
+	mds_mds_req_head head	= 1;       	// req消息的公共头 
+	string link_target_path = 2;		// 硬连接的目标路径，源路径是file_path.    		
+}
+
+message mds_mds_req_unlink
+{
+	mds_mds_req_head head	= 1;       	// req消息的公共头       		
+}
+
+message mds_mds_req_getattr
+{
+	mds_mds_req_head head	= 1;       	// req消息的公共头
+}
+
+message mds_mds_req_setattr
+{
+	mds_mds_req_head head           = 1;    // req消息的公共头
+	uint32 mode                     = 2;    // 文件权限和类型
+	common_utime mtime              = 3;
+	common_utime atime              = 4;
+	uint64 size                     = 5;    /* 文件大小 */
+	uint32 flags                    = 6;
+}

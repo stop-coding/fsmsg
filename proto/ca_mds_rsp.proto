@@ -1,0 +1,190 @@
+/*
+ * Copyright(C) 2020 Ruijie Network. All rights reserved.
+ */
+
+/*!
+* \file ca_mds.proto
+* \brief CA 与MDS之间消息定义
+* 
+* 	该文件是protoc工具生成对应代码所用的格式文档，非直接代码文件
+*
+* \copyright 2020 Ruijie Network. All rights reserved.
+* \author hongchunhua@ruijie.com.cn
+* \version v1.0.0
+* \date 2020.08.05
+* \note none 
+*/
+syntax = "proto3";							 //必须使用proto3版本
+
+import "common.proto";
+/******************************************************************************
+* @message命名规则：文件名_消息名称，如文件名为msg_pb.proto， 消息为header, 则命名为msg_pb_header
+* @消息ID设置： 每个message 对应的序号是按顺序，从1开始递增。
+*			   如需特殊设置，则需要通过在message 同行 增加 “//##序号方式” 注释，不能有空格
+*              如：
+*				message msg_pb_header		//##12
+*				{
+*					define;       		
+*				}
+* 			   则，该消息的id则自动会被设置为12，即生成枚举值 MSG_ID_MSG_PB_HEADER = 12, 
+*			   后面的则会自动从12开始递增，如13,14。
+* @结构体 消息名 大驼峰写法：
+* 				message ca_mds_mount 对应生成C结构体为 CaMdsMount
+* @枚举值 枚举类型__枚举定义, 字母全部大写
+*		        enum data_type{
+*					DATA_E_NONE = 0,
+*				}
+				则，对应DATA_E_NONE的枚举值为“DATA_TYPE__DATA_E_NONE”		
+******************************************************************************/
+
+/**
+ * @brief 回复消息的公共头
+ *
+ * @details
+ */
+message  ca_mds_rsp_head      
+{
+	int32  rsp_result 		= 1;       	// errno返回值，0成功,其它失败，详见erron.h
+	uint32 flags 			= 2;       	// 标记位，如可标记是否已落盘
+}
+
+// inode
+message  ca_mds_rsp_lookup      
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头
+	common_inode inode		= 2;		// inode数据
+	string  name			= 3;		// 文件名称
+}
+
+message  ca_mds_rsp_lookupino      
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头
+	common_inode inode		= 2;		// inode数据
+	string  name			= 3;		// 文件名称
+}
+
+// attr
+message ca_mds_rsp_getattr
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头
+	common_inode inode		= 2;		// inode数据
+	       		
+}
+
+message ca_mds_rsp_setattr
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头       		
+}
+
+// Directory
+message ca_mds_rsp_opendir
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头
+	common_dentry parent	= 2;	    // 父目录的inode数据,文件命名: ..
+	common_dentry self		= 3;		// 自身目录的inode数据, 文件命名: .
+	uint64	dentry_num		= 4;     	// 目录全部文件的总数，包括 .. 和.,因此至少大于等2	
+}
+
+message ca_mds_rsp_closedir
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头      		
+}
+
+message ca_mds_rsp_mkdir
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头 
+	common_dentry self		= 2;		// 自身目录的inode数据./     		
+}
+
+message ca_mds_rsp_rmdir
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头       		
+}
+
+message ca_mds_rsp_readdir
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头
+	repeated common_dentry dentry	= 2;// dentry  多项     		
+}
+
+
+// File
+message ca_mds_rsp_create
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头
+	common_inode inode		= 2;		// inode数据       		
+}
+
+message ca_mds_rsp_open
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头 
+	common_inode inode		= 2;		// inode数据      		
+}
+
+message ca_mds_rsp_rename
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头       		
+}
+
+message ca_mds_rsp_close
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头       		
+}
+
+message ca_mds_rsp_alloc
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头 
+	common_inode inode		= 2;		// inode数据      		
+}
+
+
+// link
+
+message ca_mds_rsp_link
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头       		
+}
+
+message ca_mds_rsp_unlink
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头       		
+}
+
+message ca_mds_rsp_symlink
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头       		
+}
+
+message ca_mds_rsp_readlink
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头
+	string     realpath		= 2;		// 实际路径   		
+}
+
+// xattr
+message ca_mds_rsp_setxattr
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头       		
+}
+
+message ca_mds_rsp_getxattr
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头       		
+}
+
+message ca_mds_rsp_rmxattr
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头       		
+}
+
+// lock
+
+message ca_mds_rsp_setfilelock
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头       		
+}
+
+message ca_mds_rsp_getfilelock
+{
+	ca_mds_rsp_head head	= 1;       	// rsp消息的公共头       		
+}

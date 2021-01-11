@@ -1,0 +1,60 @@
+/*
+ * Copyright(C) 2020 Ruijie Network. All rights reserved.
+ */
+
+/*!
+* \file mds_pfile_req.proto
+* \brief CA 与MDS之间消息定义
+* 
+* 	该文件是protoc工具生成对应代码所用的格式文档，非直接代码文件
+*
+* \copyright 2020 Ruijie Network. All rights reserved.
+* \author wubaogui@ruijie.com.cn
+* \version v1.0.0
+* \date 2020.10.19
+* \note none 
+*/
+syntax = "proto3";							 //必须使用proto3版本
+
+/******************************************************************************
+* @message命名规则：文件名_消息名称，如文件名为msg_pb.proto， 消息为header, 则命名为msg_pb_header
+* @消息ID设置： 每个message 对应的序号是按顺序，从1开始递增。
+*			   如需特殊设置，则需要通过在message 同行 增加 “//##序号方式” 注释，不能有空格
+*              如：
+*				message msg_pb_header		//##12
+*				{
+*					define;       		
+*				}
+* 			   则，该消息的id则自动会被设置为12，即生成枚举值 MSG_ID_MSG_PB_HEADER = 12, 
+*			   后面的则会自动从12开始递增，如13,14。
+* @结构体 消息名 大驼峰写法：
+* 				message ca_pfile_mount 对应生成C结构体为 CaMdsMount
+* @枚举值 枚举类型__枚举定义, 字母全部大写
+*		        enum data_type{
+*					DATA_E_NONE = 0,
+*				}
+				则，对应DATA_E_NONE的枚举值为“DATA_TYPE__DATA_E_NONE”		
+******************************************************************************/
+
+/**
+ * @brief mds - pflie 请求消息的公共头
+ *
+ * @details
+ */
+message  mds_pfile_req_head      
+{
+	uint64 client_id		= 1;	// 客户端的唯一识别码，与物理地址相关
+	uint32 flags			= 2;	// 标识字段，预留
+	uint64 cnode_id			= 3;	// cnode_id，用于索引pfile服务实体，可用于校验目标是否正确
+	uint64 obj_id			= 4;	// pfile 内的目标块id（一个pfile里有多个obj） 
+}
+
+/**
+ * @brief 删除请求
+ *
+ * @details
+ */
+message  mds_pfile_req_remove      
+{
+	mds_pfile_req_head head = 1;
+}

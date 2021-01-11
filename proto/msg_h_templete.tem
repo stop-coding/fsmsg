@@ -1,0 +1,151 @@
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+/**
+ * @brief
+ *  内存buff自定义函数
+ *
+ * @details
+ *  用于编码数据传参
+ *  
+ */
+struct fsmsg_allocator {
+	/*! @brief 内存分配*/
+	void		*(*alloc)(void *ops_ctx, size_t size);
+
+	/*! @brief 内存释放*/
+	void		(*free)(void *ops_ctx, void *pointer);
+
+	/*! @brief 内存操作上下文*/
+	void		*ops_ctx;
+};
+
+/*!
+ *  @brief  声明一个消息组
+ *	声明一个消息组消息定义和对外初始化函数
+ *
+ *  @param[in] 	box_name  		消息组名称
+ *  @param[in] 	_msg_types  	消息id定义
+ *  @return  void, 宏定义 ;
+ *
+ */
+
+#define EXPORT_MESSAGE_BOX(box_name, _msg_types...)         \
+void* _get_##box_name##_message_handle();			        \
+void _init_##box_name##_message_box(struct fsmsg_allocator *ops);   \
+void _exit_##box_name##_message_box();                      \
+enum _msgid_table_##box_name{                               \
+    MSG_ID_##box_name##_BASE = 0, ##_msg_types,             \
+    MSG_ID_##box_name##_END                                 \
+};												
+
+
+typedef void *fsmsg_ops;
+
+
+/*!
+ *  @brief  消息组初始化
+ *
+ *  @param[in] 	 box_name  	消息组名称
+ *  @param[in] 	 allocator  	内存buf自定义操作函数
+ *
+ */
+#define FSMSG_BOX_INIT(box_name, allocator) _init_##box_name##_message_box(allocator)
+
+/*!
+ *  @brief  消息组退出接口
+ *
+ *  @param[in] 	 box_name  	消息组名称
+ *
+ */
+#define FSMSG_BOX_EXIT(box_name) _exit_##box_name##_message_box()
+
+/*!
+ *  @brief  获取对应编码的操作方法
+ *
+ */
+void *fsmsg_get_msg_ops(void *h, uint32_t msg_id);
+
+/*!
+ *  @brief  获取对应编码的操作方法
+ *          用于获取ops入参
+ *  @param[in] 	 box_name  	消息组名称
+ *  @param[in] 	 id  	    消息id
+ */
+#define FSMSG_GET_OPS(box_name, id)   fsmsg_get_msg_ops(_get_##box_name##_message_handle(), id)
+
+
+/*!
+ *  @brief  初始化一个待编码的消息结构体
+ *
+ *  @param[in] 	    ops  	    消息操作函数句柄
+ *  @param[in] 	    in  	    待编码数据
+ *  @param[in] 	    in_len  	待编码数据长度
+ */
+void fsmsg_encode_init(fsmsg_ops ops, void *in, uint32_t in_len);
+
+/*!
+ *  @brief  获取待编码结构体编码后的大小，用于申请输出内存（必须先填充参数）
+ *
+ *  @param[in] 	    ops  	    消息操作函数句柄
+ *  @param[in] 	    in  	    待编码数据
+ *  @param[in] 	    in_len  	待编码数据长度
+ *  @return uint32_t;           编码后的二进制数据长度，用于申请内存
+ */
+uint32_t fsmsg_get_encoded_size(fsmsg_ops ops, void *in, uint32_t in_len);
+
+
+/*!
+ *  @brief  一条消息的编码（序列化），输出buf由调用者分配，必须先init后，在get size,分配足够的大小才能编码成功
+ *
+ *  @param[in] 	    ops  	消息操作函数句柄
+ *  @param[in] 	    in  	    待编码数据
+ *  @param[out] 	out  	待编码后的数据存放buf
+ *
+ */
+int fsmsg_encode(fsmsg_ops ops, void *in, void *out);
+
+
+/*!
+ *  @brief  一条消息的解码（反序列化）接口
+ *
+ *  @param[in] 	     ops  	消息操作函数句柄
+ *  @param[in] 	    in  	    待编码数据
+ *  @param[in] 	    in_len  	待编码数据长度
+ *  @return     struct msg_out *; NULL ,失败；非NULL 成功，内部申请内存，需要decode_delete释放
+ */
+void *fsmsg_decode_new(fsmsg_ops ops, void *in, uint32_t in_len);
+
+/*!
+ *  @brief  释放解码资源
+ *
+ *  @param[in] 	    ops  	消息操作函数句柄
+ *  @param[in] 	    to_free  待释放的输出
+ */
+void fsmsg_decode_delete(fsmsg_ops ops, void *to_free);
+
+/*!
+ *  @brief  自定义buf的编码函数
+ *          NOTE: 该解码结果需要调用者自己释放内存
+ *  @param[in] 	    ops  	消息操作函数句柄
+ *  @param[in] 	    m  	    自定义buff的内存操作函数
+ *  @param[in] 	    in  	待编码数据
+ *  @param[in] 	    in_len  待编码数据长度
+ *  @return     void *; NULL ,失败；非NULL 成功，自定义申请内存
+ */
+void *fsmsg_decode_new_r(fsmsg_ops ops, struct fsmsg_allocator *m, void *in, uint32_t in_len);
+
+/*!
+ *  @brief  释放解码资源自定义buf
+ *          NOTE: 该解码结果需要调用者自己释放内存
+ *  @param[in] 	    ops  	消息操作函数句柄
+ *  @param[in] 	    m  	    自定义buff的内存操作函数
+ *  @param[in] 	    in  	待编码数据
+ *  @param[in] 	    in_len  待编码数据长度
+ *  @return     void *; NULL ,失败；非NULL 成功，自定义申请内存
+ */
+void fsmsg_decode_delete_r(fsmsg_ops ops, struct fsmsg_allocator *m, void *to_free);
+
+ /*! @brief 消息实例化方法和变量声明 */
+

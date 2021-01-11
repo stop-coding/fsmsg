@@ -1,0 +1,147 @@
+/*
+ * Copyright(C) 2020 Ruijie Network. All rights reserved.
+ */
+
+/*!
+* \file ca_mds.proto
+* \brief 消息头定义
+* 
+* 	消息头protobuf定义，与业务消息内容无关
+*	该文件是protoc工具生成对应代码所用的格式文档，非直接代码文件
+*
+* \copyright 2020 Ruijie Network. All rights reserved.
+* \author hongchunhua@ruijie.com.cn
+* \version v1.0.0
+* \date 2020.08.05
+* \note none 
+*/
+syntax = "proto3";							 //必须使用proto3版本
+
+/******************************************************************************
+* @message命名规则：文件名_消息名称，如文件名为msg_pb.proto， 消息为header, 则命名为msg_pb_header
+* @消息ID设置： 每个message 对应的序号是按顺序，从1开始递增。
+*			   如需特殊设置，则需要通过在message 同行 增加 “//##序号方式” 注释，不能有空格
+*              如：
+*				message msg_pb_header		//##12
+*				{
+*					define;       		
+*				}
+* 			   则，该消息的id则自动会被设置为12，即生成枚举值 MSG_ID_MSG_PB_HEADER = 12, 
+*			   后面的则会自动从12开始递增，如13,14。
+* @结构体 消息名 大驼峰写法：
+* 				message ca_mds_mount 对应生成C结构体为 CaMdsMount
+* @枚举值 枚举类型__枚举定义, 字母全部大写
+*		        enum data_type{
+*					DATA_E_NONE = 0,
+*				}
+				则，对应DATA_E_NONE的枚举值为“DATA_TYPE__DATA_E_NONE”		
+******************************************************************************/
+
+enum data_type {
+	DATA_E_NONE     = 0;		  			 // 数据段类型未设置，初始化状态，强制显性设置
+	DATA_E_PROTO    = 1;		  			 // 数据段类型为protobuf
+	DATA_E_BIN      = 2;		  			 // 数据段类型为二进制
+	DATA_E_STRING   = 3;		  			 // 数据段类型为字符串
+}
+
+enum entity_role {
+	CA     			= 0;		  			 // CA节点
+	MDS    			= 1;		  			 // 元数据服务节点
+	PFILE      		= 2;		  			 // 数据服务节点
+}
+
+/**
+ * @brief 消息的公共头
+ *
+ * @details
+ *  所有使用fsmsg模块打包的消息，其头部必须是该消息体
+ */
+message common_head
+{
+	data_type 	type 			= 1;       		// data数据格式类型
+	uint64  	msg_id 			= 2;       		// data业务类型，msg_id 业务操作码
+	entity_role	entity			= 3;			// 通信实体类型，用于区分角色
+	uint64		entity_id		= 4;			// 实体唯一性id值，用于确定通信实体身份	
+	uint64  	seg_total 		= 5;       		// seg数据段总长度
+	uint32		seg_num			= 6;			/* 分段数，一个大数据，可能需要分段，多次session请求传输，由业务层去组装 */
+	uint32		seg_sn			= 7;			// 分段序号,用于按序拼接
+	uint64		private_id		= 8;			// 私有数据业务id，可选。用于拓展业务头部数据
+	data_type	private_type	= 9;			// 私有数据格式类型，默认为protobuf；
+	bytes		private_head	= 10;			// 私有数据，可选，默认是protobuf格式。可被进一步解析。
+}
+
+/**
+ * @brief  时间结构体
+ *
+ * @details
+ */
+message common_utime
+{
+	uint64	tv_sec	= 1;
+	uint64	tv_nsec = 2;
+}
+
+/**
+ * @brief 存储块信息
+ *
+ * @details
+ */
+message common_obj
+{
+	uint64	cnode_id	= 1;	// cnode_id,用于索引pfile服务实体
+	uint64	obj_id		= 2;	// pfile 内的目标块id（一个pfile里有多个obj）
+	uint64	obj_max_size= 3;	// 当前obj最大存储空间B
+	uint64	data_offset = 4;	// 数据在当前obj块里的读偏移位置
+	uint64	data_size 	= 5;	// 数据存储在当前obj里读大小
+	uint64	data_sn 	= 6;	// 数据分段序号，当一份数据被分成多份时，需要使用序号组合
+}
+
+/**
+ * @brief 文件数据信息
+ *
+ * @details
+ */
+message common_file
+{
+	common_utime mtime 		= 1;   // file data modify time.修改时间
+    common_utime atime 		= 2;   // file data access time.访问时间
+	repeated common_obj obj = 3;   // 文件存储数据块信息，可以跨多个pfile存储
+}
+
+/**
+ * @brief inode结构
+ *
+ * @details
+ */
+message common_inode
+{
+	uint64  ino 			= 1;       		// inode id
+	uint64	snapid			= 2;
+	common_utime ctime		= 3;			// inode修改时间， change time
+	common_utime mtime		= 4;			// modified timestamp
+	common_utime btime		= 5;			// inode创建时间，birth time
+	uint32 mode 			= 6;			// 文件权限和文件类型
+	uint32 uid 				= 7;
+	uint32 gid 				= 8;
+	uint64 size 			= 9;			// 总文件大小
+	uint64 max_size 		= 10;
+	int32 nlink 			= 11;
+	uint32 entry_num 		= 12;
+	uint64 index_cnt 		= 13;
+	uint64 xattr_ver 		= 14;
+	common_file	file 		= 15;
+	string	symlink 		= 16;
+}
+
+/**
+ * @brief 文件数据信息
+ *
+ * @details
+ */
+message common_dentry
+{
+	uint32	mode			= 1;		   // 文件权限和类型
+	int64   offset 			= 2;		   // 在目录项列表里偏移位置
+	string  name			= 3;		   // 文件名称
+	uint64	ino				= 4;		   // 与文件名对应的inode id
+}

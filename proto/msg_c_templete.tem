@@ -1,0 +1,168 @@
+
+#include "message_private.h"
+#include "fsmsg.h"
+/*!
+ *  @brief  定义一个消息的回调函数
+ *		由于protobuf自动化代码存在分隔符和大驼峰命名方法，这里必须同时输入一个消息名
+ *		的分隔符名称和大驼峰，如消息名：header_user, 则入参就是header_user，HeaderUser
+ *
+ *  @param[in] 	pb_msg_name   protobuf消息名-分隔符命名
+ *  @param[in]  pb_MsgName    protobuf消息名-大驼峰命名
+ *  @return  void, 宏定义 ;
+ *
+ */
+
+#define DEFINE_PROTO_MESSAGE_OPS(pb_msg_name, pb_MsgName)											\
+static void _##pb_msg_name##_encode_init(void *in, uint32_t in_len)									\
+{																									\
+	pb_MsgName *msg = (pb_MsgName *)in;																\
+	LOG_THEN_RETURN_IF_VAL_TRUE((sizeof(pb_MsgName) != in_len),										\
+	"in data not match struct size[%u],in_len[%u].",												\
+	(uint32_t)sizeof(pb_MsgName), in_len);															\
+	pb_msg_name##__init(msg);																		\
+	return;																							\
+}																									\
+static uint32_t _##pb_msg_name##_get_encoded_size(void *in, uint32_t in_len)						\
+{																									\
+	pb_MsgName *msg = (pb_MsgName *)in;																\
+	LOG_THEN_RETURN_VAL_IF_TRUE((sizeof(pb_MsgName) != in_len),0,									\
+	"in data not match struct size[%u],in_len[%u].",												\
+	(uint32_t)sizeof(pb_MsgName), in_len);															\
+	return pb_msg_name##__get_packed_size(msg);														\
+}																									\
+static int _##pb_msg_name##_encode(void *in, void *out)												\
+{																									\
+	uint32_t len;																					\
+	pb_MsgName *msg = (pb_MsgName *)in;																\
+	len = pb_msg_name##__pack(msg, out);															\
+	return len ? 0 :-1;																				\
+}																									\
+																									\
+static void* _##pb_msg_name##_decode(struct fsmsg_allocator *ops, void *in, uint32_t in_len)				\
+{																									\
+	if (ops){																						\
+		return pb_msg_name##__unpack((struct ProtobufCAllocator*)ops, in_len, in);					\
+	}else{																							\
+		return pb_msg_name##__unpack(NULL, in_len, in);												\
+	}																								\
+}																									\
+static void _##pb_msg_name##_decode_free(struct fsmsg_allocator *ops, void *out)							\
+{																									\
+	if (ops)																						\
+		pb_msg_name##__free_unpacked(out, (struct ProtobufCAllocator*)ops);							\
+	else																							\
+		pb_msg_name##__free_unpacked(out, NULL);													\
+}
+
+#define CHECK_MESSAGE_HANDLE(handle, ret) \
+do{\
+	if(unlikely( !handle || (handle->flag != _MESSAGE_FLAG))){\
+		MSG_LOG_ERROR("handle invalid.");\
+		return ret;\
+	}\
+}while(0);
+
+void *fsmsg_get_msg_ops(message_handle msg_fd, uint32_t msg_id)
+{
+	struct message_method *method = NULL;
+	struct _message_handle *handle = (struct _message_handle *)msg_fd;
+	CHECK_MESSAGE_HANDLE(handle, NULL);
+
+	LOG_THEN_RETURN_VAL_IF_TRUE((!handle->get), NULL, "handle->get empty.");
+
+	method = handle->get(handle, msg_id);
+
+	LOG_THEN_RETURN_VAL_IF_TRUE((!method), NULL, "method null, can't find id[%u] method.", msg_id);
+
+	return (void *)method;
+}
+
+void fsmsg_encode_init(fsmsg_ops ops, void *in, uint32_t in_len)
+{
+	struct message_method *method = (struct message_method *)ops;
+
+	LOG_THEN_RETURN_IF_VAL_TRUE((!method), "method null, can't find method.");
+	LOG_THEN_RETURN_IF_VAL_TRUE((!method->encode_init), "fsmsg_encode_init() is null.");
+
+	method->encode_init(in, in_len);
+	return;
+}
+
+uint32_t fsmsg_get_encoded_size(fsmsg_ops ops, void *in, uint32_t in_len)
+{
+	struct message_method *method = (struct message_method *)ops;
+
+	LOG_THEN_RETURN_VAL_IF_TRUE((!method), 0, "method null, can't find method.");
+	LOG_THEN_RETURN_VAL_IF_TRUE((!method->get_encoded_size), 0, "fsmsg_get_encoded_size() is null.");
+	return method->get_encoded_size(in, in_len);
+}
+
+int fsmsg_encode(fsmsg_ops ops, void *in, void *out)
+{
+	struct message_method *method = (struct message_method *)ops;
+
+	LOG_THEN_RETURN_VAL_IF_TRUE((!method), 0, "method null, can't find method.");
+
+	LOG_THEN_RETURN_VAL_IF_TRUE((!in), -1, "in data in empty.");
+	LOG_THEN_RETURN_VAL_IF_TRUE((!out), -1, "out buf is empty.");
+
+	LOG_THEN_RETURN_VAL_IF_TRUE((!method->encode), -1, "fsmsg_encode() is null.");
+	return method->encode(in, out);
+}
+
+
+void *fsmsg_decode_new(fsmsg_ops ops, void *in, uint32_t in_len)
+{
+	struct message_method *method = (struct message_method *)ops;
+	void *out = NULL;
+
+	LOG_THEN_RETURN_VAL_IF_TRUE((!method), NULL, "method null, can't find method.");
+
+	LOG_THEN_RETURN_VAL_IF_TRUE((!in || !in_len), NULL, "in data is invalid.");
+
+	LOG_THEN_RETURN_VAL_IF_TRUE((!method->decode),  NULL, "ops->decode empty.");
+
+	out = method->decode(NULL, in, in_len);
+	LOG_THEN_RETURN_VAL_IF_TRUE((!out),  NULL, "decode fail.");
+	return out;
+}
+
+void fsmsg_decode_delete(fsmsg_ops ops, void *to_free)
+{
+	struct message_method *method = (struct message_method *)ops;
+
+	LOG_THEN_RETURN_IF_VAL_TRUE((!method), "method null, can't find method.");
+	LOG_THEN_RETURN_IF_VAL_TRUE((!method->decode_free), "decode_free() is null.");
+
+	method->decode_free(NULL, to_free);
+
+	return;
+}
+
+void *fsmsg_decode_new_r(fsmsg_ops ops, struct fsmsg_allocator *m, void *in, uint32_t in_len)
+{
+	struct message_method *method = (struct message_method *)ops;
+	void *out = NULL;
+
+	LOG_THEN_RETURN_VAL_IF_TRUE((!method), NULL, "method null, can't find method.");
+
+	LOG_THEN_RETURN_VAL_IF_TRUE((!in || !in_len), NULL, "in data is invalid.");
+
+	LOG_THEN_RETURN_VAL_IF_TRUE((!method->decode),  NULL, "ops->decode empty.");
+
+	LOG_THEN_RETURN_VAL_IF_TRUE((!m),  NULL, "fsmsg_allocator empty.");
+
+	out = method->decode(m, in, in_len);
+	LOG_THEN_RETURN_VAL_IF_TRUE((!out),  NULL, "decode fail.");
+	return out;
+}
+void fsmsg_decode_delete_r(fsmsg_ops ops, struct fsmsg_allocator *m, void *to_free)
+{
+	struct message_method *method = (struct message_method *)ops;
+
+	LOG_THEN_RETURN_IF_VAL_TRUE((!method), "method null, can't find method.");
+	LOG_THEN_RETURN_IF_VAL_TRUE((!method->decode_free), "decode_free() is null.");
+
+	method->decode_free(m, to_free);
+	return;
+}

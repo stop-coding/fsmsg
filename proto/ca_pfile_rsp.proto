@@ -1,0 +1,78 @@
+/*
+ * Copyright(C) 2020 Ruijie Network. All rights reserved.
+ */
+
+/*!
+* \file ca_pfile.proto
+* \brief CA 与MDS之间消息定义
+* 
+* 	该文件是protoc工具生成对应代码所用的格式文档，非直接代码文件
+*
+* \copyright 2020 Ruijie Network. All rights reserved.
+* \author hongchunhua@ruijie.com.cn
+* \version v1.0.0
+* \date 2020.08.05
+* \note none 
+*/
+syntax = "proto3";							 //必须使用proto3版本
+
+/******************************************************************************
+* @message命名规则：文件名_消息名称，如文件名为msg_pb.proto， 消息为header, 则命名为msg_pb_header
+* @消息ID设置： 每个message 对应的序号是按顺序，从1开始递增。
+*			   如需特殊设置，则需要通过在message 同行 增加 “//##序号方式” 注释，不能有空格
+*              如：
+*				message msg_pb_header		//##12
+*				{
+*					define;       		
+*				}
+* 			   则，该消息的id则自动会被设置为12，即生成枚举值 MSG_ID_MSG_PB_HEADER = 12, 
+*			   后面的则会自动从12开始递增，如13,14。
+* @结构体 消息名 大驼峰写法：
+* 				message ca_pfile_mount 对应生成C结构体为 CaMdsMount
+* @枚举值 枚举类型__枚举定义, 字母全部大写
+*		        enum data_type{
+*					DATA_E_NONE = 0,
+*				}
+				则，对应DATA_E_NONE的枚举值为“DATA_TYPE__DATA_E_NONE”		
+******************************************************************************/
+
+/**
+ * @brief ca - pflie 回复消息的公共头
+ *
+ * @details
+ */
+message  ca_pfile_rsp_head      
+{
+	int32  rsp_result 		= 1;    // errno返回值，0成功,其它失败，详见erron.h
+	uint32 flags 			= 2;    // 标记位，如可标记是否已落盘
+	uint64 cnode_id			= 3;	// cnode_id,用于索引pfile服务实体,可用于校验写目标是否正确
+	uint64 obj_id			= 4;	// pfile 内的目标块id（一个pfile里有多个obj） 
+}
+// inode
+/**
+ * @brief 写回复
+ *
+ * @details
+ */
+message  ca_pfile_rsp_write      
+{
+	ca_pfile_rsp_head head  = 1;
+	uint64	w_seg_size		= 2;	// 已成功写入分片大小
+	uint64	w_seg_num		= 3;	// 写分片数量, 回复时带回
+	uint64	w_seg_sn		= 4;	// 写分片写序号，回复时带回
+	uint64	w_magic			= 5;	// 写随机ID，由CA随机分配，用于回复时带回来，用于确定是同一次文件操作
+}
+/**
+ * @brief 读回复
+ *
+ * @details
+ */
+message  ca_pfile_rsp_read      
+{ 
+	ca_pfile_rsp_head head  = 1;
+	uint64	r_offset		= 2;	// obj读偏移量，指当前分片读取obj块的起始地址
+	uint64	r_seg_num		= 3;	// 这次读请求被分片的数量
+	uint64	r_seg_sn    	= 4;	// 当前分片的序号
+	uint64	r_seg_size  	= 5;	// 当前分片的大小
+	uint64	r_magic			= 6;	// 读随机ID，由CA随机分配，用于回复时带回来，用于确定是同一次文件操作
+}
