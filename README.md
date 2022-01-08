@@ -1,31 +1,26 @@
----
-#                    build
-*【说明】编译工程采用cmake编译
 
-* for linux (ubuntu)
-* apt-get install cmake
+# 编译
+编译工程采用cmake编译
 
-	1. cd code root;
-	2. mkdir build
-	3. cd build
-	4. cmake ../    (default:debug mode)
-	5. make -j
-	6. make install
+### for linux (ubuntu)
+	apt-get install cmake
+	cd code root;
+	mkdir build
+	cd build
+	cmake ../    (default:debug mode)
+	make -j
+	make install
 
----
-#                    file 说明
+# 源码结构说明
+	open_src (开源代码 protobuf-c)
+	src (message 源码)
+	inc (message 对外api)
 
-* open_src (开源代码 protobuf-c)
-
-* src (message 源码)
-
-* inc (message 对外 函数头)
-
-#说明
+# 其它说明
 cmake 执行后自动生成多外的头文件，具体解析时由py脚本实现，需要编译环境支持python3
 生成库文件libmsg.so
 
-#                    protobuf 说明
+### protobuf 说明
 只需要增加*.proto文件，由cmake自动生成对外有文件和库文件。inc目录里都是外部需要用到的头文件
 
 
